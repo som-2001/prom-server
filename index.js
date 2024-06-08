@@ -27,7 +27,7 @@ const reqResTime=new client.Histogram({
 const totalReq=new client.Counter({
     name:"total_request",
     help:"this tells total request",
-    labelNames:['method','route','status_code'];
+    labelNames:['method','route','status_code']
 })
 
 const activeConnections = new client.Gauge({
