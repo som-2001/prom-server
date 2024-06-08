@@ -24,13 +24,48 @@ const reqResTime=new client.Histogram({
     buckets:[1,50,100,200,400,500,800,1000,2000,3000,4000,5000,6000,7000],
 });
 
+const totalReq=new client.Counter({
+    name:"total_request",
+    help:"this tells total request",
+    labelNames:['method','route','status_code'];
+})
+
+const activeConnections = new client.Gauge({
+    name: 'active_connections',
+    help: 'Number of active connections',
+});
+
+app.use((req, res, next) => {
+    activeConnections.inc();
+    res.on('finish', () => {
+        activeConnections.dec();
+    });
+    next();
+});
+
+const errorCounter = new client.Counter({
+    name: 'http_errors_total',
+    help: 'Total number of HTTP errors',
+    labelNames: ['method', 'route', 'status_code'],
+});
+
 app.use(responseTime((req,res,time)=>{
+
+    totalReq.labels({
+        method: req.method,
+        route:req.url,
+        status_code:req.statusCode
+    }).inc();
 
     reqResTime.labels({
         method: req.method,
         route:req.url,
         status_code:req.statusCode
     }).observe(time)
+
+    if (res.statusCode >= 400) {
+        errorCounter.labels(req.method, req.url, res.statusCode).inc();
+    }
 }))
 
 app.get('/metrics',async(req,res)=>{
